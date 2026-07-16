@@ -1,0 +1,95 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "New version (e.g. 0.2.0)"
+        required: true
+      notes:
+        description: "Release notes"
+        required: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - name: Bump version
+        shell: pwsh
+        run: |
+          $v = "${{ github.event.inputs.version }}"
+          (Get-Content src-tauri/tauri.conf.json) -replace '"version": ".*"', '"version": "'+$v+'"' | Set-Content src-tauri/tauri.conf.json
+          (Get-Content src-tauri/Cargo.toml) -replace '^version = ".*"', 'version = "'+$v+'"' | Set-Content src-tauri/Cargo.toml
+
+      - name: Build Tauri
+        run: npm run tauri build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Get artifacts
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem -Recurse "src-tauri/target/release/**/*_x64-setup.exe" | Select-Object -First 1
+          $sig = Get-ChildItem -Recurse "src-tauri/target/release/**/*_x64-setup.exe.sig" | Select-Object -First 1
+          echo "INSTALLER_PATH=$($installer.FullName)" >> $env:GITHUB_ENV
+          echo "INSTALLER_FILENAME=$($installer.Name)" >> $env:GITHUB_ENV
+          echo "SIG_PATH=$($sig.FullName)" >> $env:GITHUB_ENV
+
+      - name: Read signature
+        id: sig
+        shell: pwsh
+        run: |
+          $sig = Get-Content "$env:SIG_PATH" -Raw
+          echo "SIGNATURE=$sig" >> $env:GITHUB_ENV
+          echo "::add-mask::$sig"
+
+      - name: Upload release to backend
+        shell: pwsh
+        run: |
+          $uri = "${{ secrets.UPDATER_BASE_URL }}/releases/upload"
+          $file = Get-Item "$env:INSTALLER_PATH"
+          $form = @{ file = $file }
+          Invoke-RestMethod -Uri $uri -Method Put -Form $form -Headers @{ "X-API-Key" = "${{ secrets.UPDATER_API_KEY }}" }
+
+      - name: Publish update
+        shell: pwsh
+        run: |
+          $body = @{
+            version            = "${{ github.event.inputs.version }}"
+            notes              = "${{ github.event.inputs.notes }}"
+            platform           = "windows-x86_64"
+            signature          = "$env:SIGNATURE"
+            installer_filename = "$env:INSTALLER_FILENAME"
+          } | ConvertTo-Json
+          Invoke-RestMethod -Uri "${{ secrets.UPDATER_BASE_URL }}/updates/publish" -Method Post `
+            -Body $body -ContentType "application/json" `
+            -Headers @{ "X-API-Key" = "${{ secrets.UPDATER_API_KEY }}" }
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add src-tauri/tauri.conf.json src-tauri/Cargo.toml
+          git commit -m "chore: bump to v${{ github.event.inputs.version }}"
+          git push

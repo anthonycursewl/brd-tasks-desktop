@@ -1,0 +1,374 @@
+@keyframes task-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.task-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 10px 10px 8px;
+  margin-bottom: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+  animation: task-enter 0.3s ease-out;
+}
+
+.task-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at 0% 0%, color-mix(in srgb, var(--priority-color, #eab308) 2%, transparent) 0%, transparent 60%);
+  pointer-events: none;
+  border-radius: 8px;
+}
+
+.task-card:hover {
+  border-color: rgba(168, 85, 247, 0.2);
+  background: rgba(168, 85, 247, 0.03);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.06), inset 0 0 40px rgba(168, 85, 247, 0.02);
+  transform: translateY(-1px);
+}
+
+.task-card:active {
+  transform: scale(0.99);
+}
+
+.task-card.done {
+  opacity: 0.35;
+}
+
+.task-card.done:hover {
+  opacity: 0.5;
+}
+
+.check-btn {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: transparent;
+  transition: all 0.2s;
+  margin-top: 2px;
+}
+
+.check-btn:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.check-btn.checked {
+  border-color: #22c55e;
+  background: #22c55e;
+  color: #000;
+}
+
+.task-content {
+  flex: 1;
+  min-width: 0;
+  cursor: default;
+}
+
+.task-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.task-card:hover .task-actions {
+  opacity: 1;
+}
+
+.sync-spinner {
+  color: var(--color-accent);
+  animation: sync-spin 1s linear infinite;
+  flex-shrink: 0;
+  margin: 5px auto;
+}
+
+@keyframes sync-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.edit-trigger {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.edit-trigger:hover {
+  color: var(--color-accent);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.task-card.editing {
+  padding: 10px;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+
+.task-card.editing::before {
+  display: none;
+}
+
+.task-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.edit-title {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.edit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.edit-label {
+  display: flex;
+  align-items: center;
+  color: var(--color-primary-dark);
+  width: 14px;
+  flex-shrink: 0;
+}
+
+.edit-input {
+  flex: 1;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text);
+  font-size: 11px;
+  font-family: inherit;
+  outline: none;
+  padding: 3px 0;
+}
+
+.edit-input:focus {
+  border-bottom-color: var(--color-accent);
+}
+
+.edit-select {
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  background: #000;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.edit-select:hover {
+  color: var(--color-text);
+}
+
+.edit-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.edit-btn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.edit-btn.save {
+  background: var(--color-accent);
+  color: var(--color-surface);
+}
+
+.edit-btn.save:hover {
+  background: var(--color-accent-dark);
+}
+
+.edit-btn.cancel {
+  background: transparent;
+  color: var(--color-primary-dark);
+}
+
+.edit-btn.cancel:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-error);
+}
+
+.task-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.task-card.done .task-title {
+  text-decoration: line-through;
+  color: var(--color-primary-dark);
+}
+
+.task-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.badge-priority {
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.badge-tags {
+  color: var(--color-primary-dark);
+}
+
+.badge-notes {
+  color: var(--color-primary-dark);
+}
+
+.task-card.done .badge {
+  opacity: 0.5;
+}
+
+.task-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.timer-bar {
+  flex: 1;
+  height: 3px;
+  background: var(--color-surface-2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.timer-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffffff, #a855f7, #ec4899);
+  border-radius: 2px;
+  transition: width 60s linear;
+  position: relative;
+  overflow: hidden;
+}
+
+.timer-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.task-card.visible:not(.done) .timer-fill::after {
+  opacity: 1;
+  animation: timer-shimmer 2.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-card.visible:not(.done) .timer-fill::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+@keyframes timer-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.time-left {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-primary);
+  white-space: nowrap;
+}
+
+.delete-btn {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-primary-dark);
+  flex-shrink: 0;
+  transition: all 0.2s;
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.delete-btn:hover {
+  color: var(--color-error);
+  background: rgba(239, 68, 68, 0.1);
+}
