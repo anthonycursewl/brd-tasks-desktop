@@ -64,8 +64,14 @@ export function Header({ avatarUrl, userName, onReload, onAnalytics, onUpdate, u
           </button>
         </Tooltip>
         <Tooltip content={updateChecking ? "Checking…" : "Updates"} position="bottom">
-          <button className={`icon-btn${updateChecking ? " reloading" : ""}`} onClick={onUpdate} disabled={!onUpdate || updateChecking}>
-            <Download size={13} strokeWidth={2} />
+          <button className="icon-btn" onClick={onUpdate} disabled={!onUpdate || updateChecking}>
+            {updateChecking ? (
+              <span className="update-dots">
+                <span className="dot" /><span className="dot" /><span className="dot" />
+              </span>
+            ) : (
+              <Download size={13} strokeWidth={2} />
+            )}
           </button>
         </Tooltip>
         <Avatar url={avatarUrl} name={userName} />
