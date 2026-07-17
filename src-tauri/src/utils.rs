@@ -53,9 +53,8 @@ pub fn save_settings(app: &tauri::AppHandle, settings: &Settings) {
     std::fs::write(&path, data).ok();
 }
 
-pub fn remove_expired_tasks(tasks: &mut Vec<Task>) {
-    let now = chrono::Utc::now();
-    tasks.retain(|t| t.expires_at > now || t.completed);
+pub fn remove_expired_tasks(_tasks: &mut Vec<Task>) {
+    // no-op: expired tasks stay visible in the UI
 }
 
 pub fn position_popup(app: &tauri::AppHandle) {
@@ -72,10 +71,12 @@ pub fn position_popup(app: &tauri::AppHandle) {
 
 pub fn toggle_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
-        if window.is_visible().unwrap_or(false) {
+        if window.is_minimized().unwrap_or(false) {
+            let _ = window.unminimize();
+            let _ = window.set_focus();
+        } else if window.is_visible().unwrap_or(false) {
             let _ = window.hide();
         } else {
-            position_popup(app);
             let _ = window.show();
             let _ = window.set_focus();
         }

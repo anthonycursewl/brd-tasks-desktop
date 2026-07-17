@@ -1,6 +1,5 @@
 import { useState, useCallback } from "react";
-import { ChevronDown, RotateCw, BarChart3, Download } from "lucide-react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { ChevronDown, RotateCw, BarChart3, Download, X } from "lucide-react";
 import { Avatar } from "../Avatar/Avatar";
 import { Tooltip } from "../Tooltip/Tooltip";
 import "./Header.css";
@@ -12,16 +11,14 @@ interface HeaderProps {
   onAnalytics?: () => void;
   onUpdate?: () => void;
   updateChecking?: boolean;
+  isCompact?: boolean;
+  onToggleCompact?: () => void;
 }
 
 const COOLDOWN = 10000;
 
-export function Header({ avatarUrl, userName, onReload, onAnalytics, onUpdate, updateChecking }: HeaderProps) {
+export function Header({ avatarUrl, userName, onReload, onAnalytics, onUpdate, updateChecking, isCompact, onToggleCompact }: HeaderProps) {
   const [cooldown, setCooldown] = useState(0);
-
-  const handleMinimizeToTray = () => {
-    getCurrentWindow().hide();
-  };
 
   const handleReload = useCallback(() => {
     if (cooldown > 0 || !onReload) return;
@@ -38,7 +35,7 @@ export function Header({ avatarUrl, userName, onReload, onAnalytics, onUpdate, u
   }, [cooldown, onReload]);
 
   return (
-    <div className="header">
+    <div className={`header${isCompact ? " compact" : ""}`}>
       <div className="header-left">
         <img src="/brd/brd_dark_logo_nobg.png" className="logo-img" alt="BRD" />
       </div>
@@ -48,7 +45,7 @@ export function Header({ avatarUrl, userName, onReload, onAnalytics, onUpdate, u
       <div className="header-right">
         <Tooltip content="Sync" position="bottom">
           <button
-            className={`reload-btn${cooldown > 0 ? " reloading" : ""}`}
+            className={`btn-header${cooldown > 0 ? " reloading" : ""}`}
             onClick={handleReload}
             disabled={cooldown > 0}
           >
@@ -59,12 +56,12 @@ export function Header({ avatarUrl, userName, onReload, onAnalytics, onUpdate, u
           </button>
         </Tooltip>
         <Tooltip content="Analytics" position="bottom">
-          <button className="icon-btn" onClick={onAnalytics} disabled={!onAnalytics}>
+          <button className="btn-header" onClick={onAnalytics} disabled={!onAnalytics}>
             <BarChart3 size={13} strokeWidth={2} />
           </button>
         </Tooltip>
         <Tooltip content={updateChecking ? "Checking…" : "Updates"} position="bottom">
-          <button className="icon-btn" onClick={onUpdate} disabled={!onUpdate || updateChecking}>
+          <button className="btn-header" onClick={onUpdate} disabled={!onUpdate || updateChecking}>
             {updateChecking ? (
               <span className="update-dots">
                 <span className="dot" /><span className="dot" /><span className="dot" />
@@ -75,8 +72,8 @@ export function Header({ avatarUrl, userName, onReload, onAnalytics, onUpdate, u
           </button>
         </Tooltip>
         <Avatar url={avatarUrl} name={userName} />
-        <button className="tray-btn" onClick={handleMinimizeToTray}>
-          <ChevronDown size={14} strokeWidth={2.5} />
+        <button className="btn-header" onClick={onToggleCompact} title={isCompact ? "Restore" : "Compact view"}>
+          {isCompact ? <X size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={2.5} />}
         </button>
       </div>
     </div>

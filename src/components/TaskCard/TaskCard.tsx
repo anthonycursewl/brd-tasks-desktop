@@ -1,27 +1,8 @@
 import { memo, useState, useRef, useEffect } from "react";
 import { Check, X, Pencil, Flag, Tag, StickyNote, Clock, Loader2 } from "lucide-react";
 import { Task } from "../../types";
+import { getTimeRemaining, getProgressPercent } from "../../utils/time";
 import "./TaskCard.css";
-
-function getTimeRemaining(expiresAt: string): string {
-  const now = new Date();
-  const expires = new Date(expiresAt);
-  const diff = expires.getTime() - now.getTime();
-  if (diff <= 0) return "Expirada";
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  return `${minutes}m`;
-}
-
-function getProgressPercent(expiresAt: string, createdAt: string): number {
-  const now = new Date();
-  const created = new Date(createdAt);
-  const expires = new Date(expiresAt);
-  const total = expires.getTime() - created.getTime();
-  const elapsed = now.getTime() - created.getTime();
-  return Math.min(100, Math.max(0, (elapsed / total) * 100));
-}
 
 function capitalize(str: string): string {
   if (!str) return "";
@@ -37,27 +18,28 @@ const priorityColors: Record<string, string> = {
 
 interface TaskCardProps {
   task: Task;
+  now: number;
   syncing?: boolean;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
-  onDetail: (id: string) => void;
+  onDetail: (task: Task) => void;
   onUpdate: (
     id: string,
     title: string,
     priority?: string,
     tags?: string[],
     notes?: string,
-    expiryHours?: number | null,
+    expiryMinutes?: number | null,
   ) => void;
 }
 
-export const TaskCard = memo(function TaskCard({ task, syncing = false, onToggle, onDelete, onDetail, onUpdate }: TaskCardProps) {
+export const TaskCard = memo(function TaskCard({ task, now, syncing = false, onToggle, onDelete, onDetail, onUpdate }: TaskCardProps) {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editPriority, setEditPriority] = useState(task.priority);
   const [editTags, setEditTags] = useState(task.tags.join(", "));
   const [editNotes, setEditNotes] = useState(task.notes);
-  const [editExpiry, setEditExpiry] = useState(24);
+  const [editExpiry, setEditExpiry] = useState(1440);
   const [visible, setVisible] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
 
@@ -74,7 +56,7 @@ export const TaskCard = memo(function TaskCard({ task, syncing = false, onToggle
 
   const handleToggle = () => onToggle(task.id);
   const handleDelete = () => onDelete(task.id);
-  const handleDetail = () => onDetail(task.id);
+  const handleDetail = () => onDetail(task);
 
   const openEdit = () => {
     setEditTitle(task.title);
@@ -156,13 +138,20 @@ export const TaskCard = memo(function TaskCard({ task, syncing = false, onToggle
           <div className="edit-row">
             <span className="edit-label"><Clock size={10} /></span>
             <select value={editExpiry} onChange={(e) => setEditExpiry(Number(e.target.value))} className="edit-select">
-              <option value={1}>1h</option>
-              <option value={4}>4h</option>
-              <option value={8}>8h</option>
-              <option value={24}>24h</option>
-              <option value={48}>2d</option>
-              <option value={72}>3d</option>
-              <option value={168}>7d</option>
+              <option value={5}>5m</option>
+              <option value={10}>10m</option>
+              <option value={15}>15m</option>
+              <option value={30}>30m</option>
+              <option value={60}>1h</option>
+              <option value={120}>2h</option>
+              <option value={240}>4h</option>
+              <option value={480}>8h</option>
+              <option value={720}>12h</option>
+              <option value={1440}>24h</option>
+              <option value={2880}>2d</option>
+              <option value={10080}>7d</option>
+              <option value={43200}>30d</option>
+              <option value={525600}>1y</option>
             </select>
           </div>
           <div className="edit-actions">
@@ -177,7 +166,7 @@ export const TaskCard = memo(function TaskCard({ task, syncing = false, onToggle
   return (
     <div
       ref={cardRef}
-      className={`task-card ${task.completed ? "done" : ""}${visible ? " visible" : ""}`}
+      className={`task-card ${task.completed ? "done" : ""}${(!task.completed && new Date(task.expires_at).getTime() <= now) ? " expired" : ""}${visible ? " visible" : ""}`}
       style={{ "--priority-color": priorityColors[task.priority] || "#eab308" } as React.CSSProperties}
     >
       <button className={`check-btn${task.completed ? " checked" : ""}`} onClick={(e) => { e.stopPropagation(); handleToggle(); }} type="button">
@@ -228,6 +217,8 @@ export const TaskCard = memo(function TaskCard({ task, syncing = false, onToggle
     </div>
   );
 }, (prev, next) => {
+  if (prev.syncing !== next.syncing) return false;
+  if (next.now - prev.now > 1000) return false;
   return prev.task.id === next.task.id &&
     prev.task.title === next.task.title &&
     prev.task.completed === next.task.completed &&

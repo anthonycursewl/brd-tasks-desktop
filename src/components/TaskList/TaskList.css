@@ -97,6 +97,10 @@
   color: var(--color-text);
 }
 
+.expired-toggle span {
+  color: var(--color-error);
+}
+
 .chevron {
   transition: transform 0.2s;
 }
@@ -107,4 +111,22 @@
 
 .completed-list {
   margin-top: 3px;
+  content-visibility: auto;
+  contain-intrinsic-size: 60px;
+}
+
+.show-more-btn {
+  display: block;
+  width: 100%;
+  padding: 6px 4px;
+  border: none;
+  background: transparent;
+  color: var(--color-accent);
+  font-size: 10px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.show-more-btn:hover {
+  background: rgba(255,255,255,0.03);
 }

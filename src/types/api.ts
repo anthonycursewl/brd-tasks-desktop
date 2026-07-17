@@ -4,6 +4,7 @@ export interface TaskDTO {
   title: string;
   description: string;
   completed: boolean;
+  completed_at: string | null;
   priority: "low" | "medium" | "high" | "urgent";
   tags: string[];
   notes: string;
@@ -36,35 +37,54 @@ export interface UpdateTaskPayload {
   version: number;
 }
 
-export interface SyncPayload {
-  tasks: {
-    id: string;
-    title: string;
-    completed: boolean;
-    priority: string;
-    tags: string[];
-    notes: string;
-    expires_at: string;
-    created_at: string;
-    version: number;
-    deleted_at: string | null;
-  }[];
-  last_sync_at: string;
-  device_id?: string;
+export interface SyncPayloadTask {
+  id: string;
+  title: string;
+  completed: boolean;
+  priority: string;
+  tags: string[];
+  notes: string;
+  expires_at: string;
+  created_at: string;
+  updated_at: string;
+  version: number;
+  deleted_at: string | null;
+}
+
+export interface SyncBatch {
+  tasks: SyncPayloadTask[];
   deleted_ids?: string[];
-  completed_ids?: string[];
+  last_sync_at?: string;
+  device_id?: string;
+  batch_id?: string;
+}
+
+export interface SyncPayload {
+  batches: SyncBatch[];
+}
+
+export interface SyncConflict {
+  task_id: string;
+  client_version: number;
+  server_version: number;
+  server_task: TaskDTO;
 }
 
 export interface SyncResponse {
   tasks: TaskDTO[];
   deleted_ids: string[];
   sync_at: string;
-  conflicts?: {
-    task_id: string;
-    client_version: number;
-    server_version: number;
-    server_task: TaskDTO;
-  }[];
+  conflicts: SyncConflict[];
+  has_more: boolean;
+  next_cursor: string | null;
+}
+
+export interface SyncFlatPayload {
+  tasks: SyncPayloadTask[];
+  deleted_ids: string[];
+  last_sync_at?: string;
+  take?: number;
+  cursor?: string | null;
 }
 
 export interface LoginPayload {

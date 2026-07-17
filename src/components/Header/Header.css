@@ -5,6 +5,15 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+.header.compact {
+  padding: 6px 8px;
+}
+
+.header.compact .logo-img {
+  height: 20px;
+  width: 20px;
+}
+
 .header-left {
   display: flex;
   align-items: center;
@@ -24,54 +33,35 @@
 .header-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
-.tray-btn {
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: transparent;
-  color: var(--color-primary-dark);
-  cursor: pointer;
+.btn-header {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  transition: all 0.15s;
-}
-
-.tray-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--color-text);
-}
-
-.reload-btn {
-  width: 24px;
-  height: 24px;
+  gap: 4px;
   border: none;
   background: transparent;
-  color: var(--color-primary-dark);
+  color: #fff;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: all 0.15s;
+  padding: 6px 12px;
+  border-radius: 22px;
+  transition: all 0.2s ease;
   position: relative;
 }
 
-.reload-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--color-text);
+.btn-header:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  transform: scale(1.05);
 }
 
-.reload-btn:disabled {
+.btn-header:disabled {
   cursor: not-allowed;
   opacity: 0.4;
 }
 
-.reload-btn.reloading svg {
+.btn-header.reloading svg {
   animation: reload-spin 1s linear infinite;
 }
 
@@ -81,36 +71,8 @@
   right: -2px;
   font-size: 7px;
   font-weight: 700;
-  color: var(--color-primary-dark);
+  color: #fff;
   line-height: 1;
-}
-
-.icon-btn {
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: transparent;
-  color: var(--color-primary-dark);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: all 0.15s;
-}
-
-.icon-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--color-text);
-}
-
-.icon-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
-
-.icon-btn.reloading svg {
-  animation: reload-spin 1s linear infinite;
 }
 
 /* ── Update dots ─────────────────────── */
@@ -124,7 +86,7 @@
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: var(--color-primary-dark);
+  background: #fff;
   animation: dot-pulse 1.4s ease-in-out infinite;
 }
 

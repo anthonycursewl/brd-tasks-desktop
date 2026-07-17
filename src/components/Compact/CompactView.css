@@ -1,0 +1,71 @@
+.compact-root {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: default;
+}
+.compact-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.compact-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--color-text);
+}
+.compact-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.compact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.compact-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--color-surface);
+  border-radius: 8px;
+  gap: 8px;
+}
+.compact-item-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.compact-priority-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.compact-item-title {
+  font-size: 13px;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.compact-item-time {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+.compact-empty {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  padding: 12px 0;
+  text-align: center;
+}
+.compact-more {
+  color: var(--color-primary);
+  font-size: 11px;
+  text-align: center;
+}

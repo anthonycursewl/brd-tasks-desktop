@@ -1,7 +1,7 @@
 import { AuthTokens } from "../types/auth";
 import {
   TaskListResponse, TaskResponse, DeleteResponse,
-  CreateTaskPayload, UpdateTaskPayload, SyncPayload, SyncResponse,
+  CreateTaskPayload, UpdateTaskPayload, SyncFlatPayload, SyncResponse,
 } from "../types/api";
 import { AnalyticsResponse } from "../types/analytics";
 import { auth } from "./auth";
@@ -9,6 +9,7 @@ import { auth } from "./auth";
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://api.malet.app";
 
 let currentTokens: AuthTokens | null = null;
+let refreshPromise: Promise<AuthTokens | null> | null = null;
 
 export function setTokens(tokens: AuthTokens | null) {
   currentTokens = tokens;
@@ -29,7 +30,15 @@ async function request<T>(url: string, options: RequestInit = {}, retries = 3): 
   let res = await fetch(url, { ...options, headers: { ...headers(), ...(options.headers as Record<string, string>) } });
 
   if (res.status === 401 && currentTokens) {
-    const newTokens = await auth.refreshToken(currentTokens).catch(() => null);
+    // Avoid multiple concurrent refresh requests: reuse a single refresh promise
+    if (!refreshPromise) {
+      refreshPromise = auth.refreshToken(currentTokens).then((t) => t).catch(() => null).finally(() => {
+        // keep reference until awaited; clear afterwards
+      });
+    }
+    const newTokens = await refreshPromise.catch(() => null);
+    // clear the shared promise reference now that awaiting finished
+    refreshPromise = null;
     if (newTokens) {
       setTokens(newTokens);
       res = await fetch(url, { ...options, headers: { ...headers(), ...(options.headers as Record<string, string>) } });
@@ -110,7 +119,7 @@ export const api = {
     },
   },
 
-  sync(payload: SyncPayload): Promise<SyncResponse> {
+  sync(payload: SyncFlatPayload): Promise<SyncResponse> {
     return request<SyncResponse>(`${BASE_URL}/tasks/sync`, {
       method: "POST",
       body: JSON.stringify(payload),

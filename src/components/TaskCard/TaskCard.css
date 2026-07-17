@@ -288,6 +288,22 @@
   opacity: 0.5;
 }
 
+.task-card.expired {
+  opacity: 0.5;
+}
+
+.task-card.expired .time-left {
+  color: var(--color-error);
+}
+
+.task-card.expired .timer-fill {
+  background: linear-gradient(90deg, var(--color-error), #ef4444);
+}
+
+.task-card.expired:hover {
+  opacity: 0.65;
+}
+
 .task-meta {
   display: flex;
   align-items: center;

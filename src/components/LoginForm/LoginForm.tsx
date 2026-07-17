@@ -11,6 +11,8 @@ interface LoginFormProps {
 type Mode = "login" | "register";
 
 export function LoginForm({ onLogin, onRegister, onCancel }: LoginFormProps) {
+  const [closing, setClosing] = useState(false);
+  const handleClose = useCallback(() => { setClosing(true); setTimeout(onCancel, 300); }, [onCancel]);
   const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -43,14 +45,14 @@ export function LoginForm({ onLogin, onRegister, onCancel }: LoginFormProps) {
   }, [mode]);
 
   return (
-    <div className="login-overlay">
-      <div className="login-modal">
+    <div className={`login-overlay${closing ? " closing" : ""}`}>
+      <div className={`login-modal${closing ? " closing" : ""}`}>
         <div className="login-header">
           <div className="login-brands">
             <img src="https://sales.malet.app/malet/logo_malet.svg" className="login-brand brand-logo-white" alt="Malet" />
             <img src="/brd/brd_dark_logo_nobg.png" className="login-brand brand-logo-white" alt="BRD" />
           </div>
-          <button className="login-close" onClick={onCancel} type="button">
+          <button className="login-close" onClick={handleClose} type="button">
             <X size={14} />
           </button>
         </div>

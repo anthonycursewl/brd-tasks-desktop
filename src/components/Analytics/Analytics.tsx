@@ -134,9 +134,15 @@ function SkeletonBlock({ className }: { className?: string }) {
 }
 
 export function Analytics({ onClose }: AnalyticsProps) {
+  const [closing, setClosing] = useState(false);
   const [data, setData] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const handleClose = useCallback(() => {
+    setClosing(true);
+    setTimeout(onClose, 300);
+  }, [onClose]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -170,14 +176,14 @@ export function Analytics({ onClose }: AnalyticsProps) {
   const monthly = data?.monthly;
 
   return (
-    <div className="analytics-overlay" onClick={onClose}>
-      <div className="analytics-panel" onClick={(e) => e.stopPropagation()}>
+    <div className={`analytics-overlay${closing ? " closing" : ""}`} onClick={handleClose}>
+      <div className={`analytics-panel${closing ? " closing" : ""}`} onClick={(e) => e.stopPropagation()}>
         <div className="analytics-head">
           <img src="/brd/brd_dark_logo_nobg.png" className="analytics-logo" alt="" />
           <span className="analytics-title">
             <span className="at-light">Analy</span><span className="at-dark">tics</span>
           </span>
-          <button className="analytics-close" onClick={onClose}><X size={14} /></button>
+          <button className="analytics-close" onClick={handleClose}><X size={14} /></button>
         </div>
 
         {loading && (

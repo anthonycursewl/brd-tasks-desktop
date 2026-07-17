@@ -64,25 +64,15 @@ pub fn run() {
 
             *state.tray.lock().unwrap() = Some(tray);
 
+            // Position and show the main window on startup.
             let app_handle = app.handle().clone();
-            std::thread::spawn(move || {
-                let h1 = app_handle.clone();
-                let _ = app_handle.run_on_main_thread(move || {
-                    if let Some(window) = h1.get_webview_window("main") {
-                        utils::position_popup(&h1);
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    }
-                });
-
-                std::thread::sleep(std::time::Duration::from_millis(1500));
-
-                let h2 = app_handle.clone();
-                let _ = app_handle.run_on_main_thread(move || {
-                    if let Some(window) = h2.get_webview_window("main") {
-                        let _ = window.hide();
-                    }
-                });
+            let h = app_handle.clone();
+            let _ = app_handle.run_on_main_thread(move || {
+                if let Some(window) = h.get_webview_window("main") {
+                    crate::utils::position_popup(&h);
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
             });
 
             Ok(())
@@ -96,6 +86,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_tasks,
             commands::add_task,
+            commands::upsert_task,
             commands::toggle_task,
             commands::delete_task,
             commands::update_task,

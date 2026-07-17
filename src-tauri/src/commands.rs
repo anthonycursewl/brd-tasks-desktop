@@ -1,4 +1,5 @@
 use chrono::Utc;
+use chrono::DateTime;
 use tauri::Manager;
 use uuid::Uuid;
 
@@ -24,20 +25,24 @@ pub fn add_task(
     priority: String,
     tags: Vec<String>,
     notes: String,
-    expiry_hours: Option<i64>,
+    expiry_minutes: Option<i64>,
 ) -> Task {
-    let hours = expiry_hours.unwrap_or(24).max(1);
+    let minutes = expiry_minutes.unwrap_or(1440).max(1).min(525600);
     let now = Utc::now();
     let task = Task {
         id: id.unwrap_or_else(|| Uuid::new_v4().to_string()),
         title,
         description,
         completed: false,
+        completed_at: None,
         created_at: now,
-        expires_at: now + chrono::Duration::hours(hours),
+        expires_at: now + chrono::Duration::minutes(minutes),
+        updated_at: now,
+        deleted_at: None,
         priority,
         tags,
         notes,
+        version: Some(1),
     };
     let state = app.state::<AppState>();
     let mut tasks = state.tasks.lock().unwrap();
@@ -50,6 +55,54 @@ pub fn add_task(
 }
 
 #[tauri::command]
+pub fn upsert_task(
+    app: tauri::AppHandle,
+    id: String,
+    title: String,
+    description: String,
+    completed: bool,
+    completed_at: Option<String>,
+    priority: String,
+    tags: Vec<String>,
+    notes: String,
+    created_at: String,
+    expires_at: String,
+    updated_at: String,
+    deleted_at: Option<String>,
+    version: Option<i64>,
+) -> Task {
+    let parse_dt = |s: String| -> DateTime<Utc> {
+        DateTime::parse_from_rfc3339(&s)
+            .map(|d| d.with_timezone(&Utc))
+            .unwrap_or_else(|_| Utc::now())
+    };
+    let task = Task {
+        id,
+        title,
+        description,
+        completed,
+        completed_at: completed_at.map(|s| parse_dt(s)),
+        created_at: parse_dt(created_at),
+        expires_at: parse_dt(expires_at),
+        updated_at: parse_dt(updated_at),
+        deleted_at: deleted_at.map(|s| parse_dt(s)),
+        priority,
+        tags,
+        notes,
+        version,
+    };
+    let state = app.state::<AppState>();
+    let mut tasks = state.tasks.lock().unwrap();
+    if let Some(existing) = tasks.iter_mut().find(|t| t.id == task.id) {
+        *existing = task.clone();
+    } else {
+        tasks.push(task.clone());
+    }
+    save_tasks(&app, &tasks);
+    task
+}
+
+#[tauri::command]
 pub fn update_task(
     app: tauri::AppHandle,
     id: String,
@@ -57,7 +110,7 @@ pub fn update_task(
     priority: String,
     tags: Vec<String>,
     notes: String,
-    expiry_hours: Option<i64>,
+    expiry_minutes: Option<i64>,
 ) -> Option<Task> {
     let state: tauri::State<'_, AppState> = app.state::<AppState>();
     let mut tasks: std::sync::MutexGuard<'_, Vec<Task>> = state.tasks.lock().unwrap();
@@ -66,8 +119,9 @@ pub fn update_task(
         task.priority = priority;
         task.tags = tags;
         task.notes = notes;
-        if let Some(hours) = expiry_hours {
-            task.expires_at = Utc::now() + chrono::Duration::hours(hours.max(1));
+        task.updated_at = Utc::now();
+        if let Some(minutes) = expiry_minutes {
+            task.expires_at = Utc::now() + chrono::Duration::minutes(minutes.max(1).min(525600));
         }
         let updated = task.clone();
         save_tasks(&app, &tasks);
@@ -83,6 +137,8 @@ pub fn toggle_task(app: tauri::AppHandle, id: String) -> Option<Task> {
     let mut tasks: std::sync::MutexGuard<'_, Vec<Task>> = state.tasks.lock().unwrap();
     if let Some(task) = tasks.iter_mut().find(|t: &&mut Task| t.id == id) {
         task.completed = !task.completed;
+        task.completed_at = if task.completed { Some(Utc::now()) } else { None };
+        task.updated_at = Utc::now();
         let updated = task.clone();
         save_tasks(&app, &tasks);
         Some(updated)

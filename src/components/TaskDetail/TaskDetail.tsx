@@ -1,36 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useReducer } from "react";
 import { X, Flag, Tag, Calendar, Trash2, Circle, Check } from "lucide-react";
 import { Task } from "../../types";
-import { TaskDTO } from "../../types/api";
-import { api, setTokens } from "../../services/api";
-import { auth } from "../../services/auth";
-import { getCached, setCached } from "../../services/taskCache";
+import { getRemainingDetailed } from "../../utils/time";
 import "./TaskDetail.css";
 
 interface TaskDetailProps {
-  taskId: string;
+  task: Task;
   onClose: () => void;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
-}
-
-function dtoToTask(dto: TaskDTO): Task {
-  return {
-    id: dto.id,
-    title: dto.title,
-    description: dto.description || "",
-    completed: dto.completed,
-    created_at: dto.created_at,
-    expires_at: dto.expires_at,
-    priority: dto.priority || "medium",
-    tags: dto.tags || [],
-    notes: dto.notes || "",
-    version: dto.version,
-  };
-}
-
-function fromDTO(dto: TaskDTO): Task {
-  return dtoToTask(dto);
 }
 
 const priorityMeta: Record<string, { label: string; color: string }> = {
@@ -44,127 +22,44 @@ function formatDate(iso: string): string {
   try {
     const d = new Date(iso);
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  } catch { return iso; }
+  } catch {
+    return iso;
+  }
 }
 
-function calcRemaining(expiresAt: string, now: number) {
-  const diff = new Date(expiresAt).getTime() - now;
-  if (diff <= 0) return { total: 0, days: 0, hours: 0, minutes: 0, seconds: 0, expired: true };
-  const total = Math.floor(diff / 1000);
-  return {
-    total, expired: false,
-    days: Math.floor(total / 86400),
-    hours: Math.floor((total % 86400) / 3600),
-    minutes: Math.floor((total % 3600) / 60),
-    seconds: total % 60,
-  };
+function padded(n: number): string {
+  return n.toString().padStart(2, "0");
 }
 
-function SkeletonBlock({ className }: { className?: string }) {
-  return <div className={`td-skel ${className || ""}`} />;
-}
-
-export function TaskDetail({ taskId, onClose, onToggle, onDelete }: TaskDetailProps) {
-  const [task, setTask] = useState<Task | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [now, setNow] = useState(Date.now());
+export function TaskDetail({ task, onClose, onToggle, onDelete }: TaskDetailProps) {
+  const [closing, setClosing] = useState(false);
+  const [, tick] = useReducer((x: number) => x + 1, 0);
   const [ready, setReady] = useState(false);
 
-  const fetchTask = useCallback(async () => {
-    setLoading(true);
-    setReady(false);
-    setError("");
-
-    const cached = getCached(taskId);
-    if (cached) {
-      setTask(fromDTO(cached));
-      setLoading(false);
-      requestAnimationFrame(() => setReady(true));
-    }
-
-    const state = auth.load();
-    if (state.mode === "account" && state.tokens) {
-      setTokens(state.tokens);
-      try {
-        const res = await api.tasks.getById(taskId);
-        setCached(res.task);
-        setTask(fromDTO(res.task));
-        setLoading(false);
-        requestAnimationFrame(() => setReady(true));
-      } catch (e: any) {
-        if (!cached) {
-          setError(typeof e?.message === "string" ? e.message : "Error al cargar tarea");
-          setLoading(false);
-        }
-      }
-    } else {
-      if (!cached) {
-        setError("Inicia sesión para ver detalle");
-        setLoading(false);
-      }
-    }
-  }, [taskId]);
-
-  useEffect(() => { fetchTask(); }, [fetchTask]);
+  const handleClose = useCallback(() => {
+    setClosing(true);
+    setTimeout(onClose, 300);
+  }, [onClose]);
 
   useEffect(() => {
-    if (task && !loading) {
-      const timer = setInterval(() => setNow(Date.now()), 1000);
-      return () => clearInterval(timer);
-    }
-  }, [task, loading]);
+    setReady(true);
+  }, []);
 
-  if (loading) {
-    return (
-      <div className="td-overlay" onClick={onClose}>
-        <div className="td-panel" onClick={(e) => e.stopPropagation()}>
-          <div className="td-head">
-            <img src="/brd/brd_dark_logo_nobg.png" className="td-logo" alt="" />
-            <span className="td-title"><span className="td-l">Ta</span><span className="td-d">sk</span></span>
-            <button className="td-close" onClick={onClose}><X size={14} /></button>
-          </div>
-          <div className="td-body loading">
-            <SkeletonBlock className="td-skel-title" />
-            <SkeletonBlock className="td-skel-row" />
-            <SkeletonBlock className="td-skel-row-short" />
-            <SkeletonBlock className="td-skel-row" />
-            <SkeletonBlock className="td-skel-row-short" />
-            <div className="td-divider" />
-            <SkeletonBlock className="td-skel-timer" />
-            <SkeletonBlock className="td-skel-btn-row" />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    const timer = setInterval(() => tick(), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-  if (error || !task) {
-    return (
-      <div className="td-overlay" onClick={onClose}>
-        <div className="td-panel" onClick={(e) => e.stopPropagation()}>
-          <div className="td-head">
-            <img src="/brd/brd_dark_logo_nobg.png" className="td-logo" alt="" />
-            <span className="td-title"><span className="td-l">Ta</span><span className="td-d">sk</span></span>
-            <button className="td-close" onClick={onClose}><X size={14} /></button>
-          </div>
-          <p className="td-error">{error || "Tarea no encontrada"}</p>
-        </div>
-      </div>
-    );
-  }
-
-  const rem = calcRemaining(task.expires_at, now);
+  const rem = getRemainingDetailed(task.expires_at);
   const pri = priorityMeta[task.priority] || priorityMeta.medium;
-  const padded = (n: number) => String(n).padStart(2, "0");
 
   return (
-    <div className="td-overlay" onClick={onClose}>
-      <div className="td-panel" onClick={(e) => e.stopPropagation()}>
+    <div className={`td-overlay${closing ? " closing" : ""}`} onClick={handleClose}>
+      <div className={`td-panel${closing ? " closing" : ""}`} onClick={(e) => e.stopPropagation()}>
         <div className="td-head">
           <img src="/brd/brd_dark_logo_nobg.png" className="td-logo" alt="" />
           <span className="td-title"><span className="td-l">Ta</span><span className="td-d">sk</span></span>
-          <button className="td-close" onClick={onClose}><X size={14} /></button>
+          <button className="td-close" onClick={handleClose}><X size={14} /></button>
         </div>
 
         <div className={`td-body ${ready ? "ready" : ""}`}>

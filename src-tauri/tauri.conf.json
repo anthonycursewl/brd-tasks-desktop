@@ -16,13 +16,13 @@
         "title": "BRD Tasks",
         "width": 360,
         "height": 520,
-        "resizable": false,
+        "resizable": true,
         "decorations": false,
         "transparent": true,
         "shadow": false,
         "skipTaskbar": true,
         "alwaysOnTop": true,
-        "visible": false
+        "visible": true
       }
     ],
     "security": {

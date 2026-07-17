@@ -22,10 +22,11 @@ function sortByPriority(tasks: Task[]): Task[] {
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(Date.now());
   const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set());
   const dirtyRef = useRef(false);
+  const dirtyTaskIdsRef = useRef<Set<string>>(new Set());
   const deletedIdsRef = useRef<Set<string>>(new Set());
-  const completedIdsRef = useRef<Set<string>>(new Set());
   const tasksRef = useRef(tasks);
   tasksRef.current = tasks;
   const syncTimeoutsRef = useRef<Map<string, number>>(new Map());
@@ -40,10 +41,21 @@ export function useTasks() {
     }
   }, []);
 
-  const markDirty = useCallback((deletedIds?: string[], completedIds?: string[]) => {
-    dirtyRef.current = true;
+  const markDirty = useCallback((taskIds?: string[], deletedIds?: string[]) => {
+    if (taskIds) {
+      for (const id of taskIds) dirtyTaskIdsRef.current.add(id);
+    }
+    dirtyRef.current = dirtyTaskIdsRef.current.size > 0;
     if (deletedIds) for (const id of deletedIds) deletedIdsRef.current.add(id);
-    if (completedIds) for (const id of completedIds) completedIdsRef.current.add(id);
+  }, []);
+
+  const clearDirty = useCallback((taskIds?: string[]) => {
+    if (taskIds) {
+      for (const id of taskIds) dirtyTaskIdsRef.current.delete(id);
+    } else {
+      dirtyTaskIdsRef.current.clear();
+    }
+    dirtyRef.current = dirtyTaskIdsRef.current.size > 0;
   }, []);
 
   const removeSyncing = useCallback((taskId: string) => {
@@ -75,23 +87,42 @@ export function useTasks() {
     }
   }, [addSyncing, removeSyncing, loadTasks, notify]);
 
-  const applyRemoteChanges = useCallback(async (remote: Task[], deleted: string[]) => {
-    if (remote.length === 0 && deleted.length === 0) return false;
+  const applyRemoteChanges = useCallback(async (remote: Task[], deleted: string[], conflicts?: { task_id: string; server_task: any }[]) => {
+    if (remote.length === 0 && deleted.length === 0 && (!conflicts || conflicts.length === 0)) return false;
     for (const t of remote) {
-      const exists = tasksRef.current.some((local) => local.id === t.id);
-      if (exists) {
-        console.log(`Apply remote update: id=${t.id} title="${t.title}"`);
-        await invoke("update_task", {
-          id: t.id, title: t.title, priority: t.priority,
-          tags: t.tags, notes: t.notes, expiryHours: null,
-        }).catch(() => {});
-      } else {
-        console.log(`Apply remote add: id=${t.id} title="${t.title}"`);
-        await invoke("add_task", {
-          id: t.id, title: t.title, description: t.description, priority: t.priority,
-          tags: t.tags, notes: t.notes,
-        }).catch(() => {});
-      }
+      await invoke("upsert_task", {
+        id: t.id,
+        title: t.title,
+        description: t.description ?? "",
+        completed: t.completed,
+        completed_at: t.completed_at,
+        priority: t.priority,
+        tags: t.tags,
+        notes: t.notes,
+        created_at: t.created_at,
+        expires_at: t.expires_at,
+        updated_at: t.updated_at,
+        deleted_at: t.deleted_at,
+        version: t.version ?? null,
+      }).catch(() => {});
+    }
+    for (const c of conflicts || []) {
+      const s = c.server_task;
+      await invoke("upsert_task", {
+        id: c.task_id,
+        title: s.title,
+        description: s.description ?? "",
+        completed: s.completed,
+        completed_at: s.completed_at ?? null,
+        priority: s.priority,
+        tags: s.tags,
+        notes: s.notes,
+        created_at: s.created_at,
+        expires_at: s.expires_at,
+        updated_at: s.updated_at,
+        deleted_at: s.deleted_at ?? null,
+        version: s.version ?? null,
+      }).catch(() => {});
     }
     for (const id of deleted) {
       const exists = tasksRef.current.some((local) => local.id === id);
@@ -106,41 +137,14 @@ export function useTasks() {
     const state = auth.load();
     if (state.mode !== "account") return;
     const needsFullSync = localStorage.getItem("brd_needs_full_sync") === "true";
-    let didPush = false;
+    if (needsFullSync) localStorage.removeItem("brd_needs_full_sync");
     try {
-      if (needsFullSync) {
-        localStorage.removeItem("brd_needs_full_sync");
-        const deleted = [...deletedIdsRef.current];
-        const completed = [...completedIdsRef.current];
-        deletedIdsRef.current.clear();
-        completedIdsRef.current.clear();
-        console.log(`Sync full push: ${tasksRef.current.length} tasks, ${deleted.length} deleted, ${completed.length} completed`);
-        const result = await sync.push(tasksRef.current, deleted, completed);
-        if (result) {
-          didPush = true;
-          console.log(`Sync push response: ${result.tasks.length} remote, ${result.deleted_ids.length} deleted`);
-          const changed = await applyRemoteChanges(result.tasks, result.deleted_ids);
-          if (changed) await loadTasks();
-        }
-        notify("Tareas sincronizadas", "success");
-      } else if (dirtyRef.current) {
-        dirtyRef.current = false;
-        const deleted = [...deletedIdsRef.current];
-        const completed = [...completedIdsRef.current];
-        deletedIdsRef.current.clear();
-        completedIdsRef.current.clear();
-        const syncing = new Set(syncingIds);
-        const tasksToPush = tasksRef.current.filter((t) => !syncing.has(t.id));
-        console.log(`Sync dirty push: ${tasksToPush.length}/${tasksRef.current.length} tasks, ${deleted.length} deleted, ${completed.length} completed`);
-        const result = await sync.push(tasksToPush, deleted, completed);
-        if (result) {
-          didPush = true;
-          console.log(`Sync push response: ${result.tasks.length} remote, ${result.deleted_ids.length} deleted`);
-          const changed = await applyRemoteChanges(result.tasks, result.deleted_ids);
-          if (changed) await loadTasks();
-        }
-      }
-      if (!didPush) {
+      const deleted = [...deletedIdsRef.current];
+      const tasksToSync = needsFullSync
+        ? tasksRef.current
+        : tasksRef.current.filter((t) => dirtyTaskIdsRef.current.has(t.id) && !syncingIds.has(t.id));
+
+      if (!needsFullSync && tasksToSync.length === 0 && deleted.length === 0) {
         const pulled = await sync.pull();
         if (pulled && pulled.length > 0) {
           console.log(`Sync pull: ${pulled.length} tasks`);
@@ -149,12 +153,25 @@ export function useTasks() {
         } else {
           console.log("Sync pull: 0 tasks");
         }
+        return;
       }
+
+      const lastSyncAt = localStorage.getItem("brd_last_sync") || new Date(0).toISOString();
+      console.log(`SyncAll: ${tasksToSync.length} tasks, ${deleted.length} deleted, lastSyncAt=${lastSyncAt}${needsFullSync ? " (full)" : ""}`);
+      const result = await sync.syncAll(tasksToSync, deleted, lastSyncAt);
+      if (result) {
+        deletedIdsRef.current.clear();
+        clearDirty();
+        console.log(`SyncAll complete: ${result.tasks.length} remote, ${result.deleted_ids.length} deleted, ${result.conflicts.length} conflicts`);
+        const changed = await applyRemoteChanges(result.tasks, result.deleted_ids, result.conflicts);
+        if (changed) await loadTasks();
+      }
+      if (needsFullSync) notify("Tareas sincronizadas", "success");
     } catch (e: any) {
       console.error("[Sync]", e);
       notify(typeof e?.message === "string" ? e.message : "Error al sincronizar");
     }
-  }, [loadTasks, notify, applyRemoteChanges, syncingIds]);
+  }, [loadTasks, notify, applyRemoteChanges, syncingIds, clearDirty]);
 
   const triggerSync = useCallback(() => {
     localStorage.setItem("brd_needs_full_sync", "true");
@@ -164,10 +181,15 @@ export function useTasks() {
   useEffect(() => {
     loadTasks();
     const interval = setInterval(() => {
-      invoke("cleanup_expired").catch(() => {});
-    }, 300000);
+      invoke("cleanup_expired").then(() => loadTasks()).catch(() => {});
+    }, 60000);
     return () => clearInterval(interval);
   }, [loadTasks]);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => syncNow(), 60000);
@@ -182,7 +204,7 @@ export function useTasks() {
   }, []);
 
   const addTask = useCallback(
-    async (title: string, description?: string, priority?: string, tags?: string[], notes?: string, expiryHours?: number) => {
+    async (title: string, description?: string, priority?: string, tags?: string[], notes?: string, expiryMinutes?: number) => {
       if (!title.trim()) return;
       try {
         const created = await invoke<Task>("add_task", {
@@ -191,11 +213,11 @@ export function useTasks() {
           priority: priority ?? "medium",
           tags: tags ?? [],
           notes: notes ?? "",
-          expiryHours: expiryHours ?? null,
+          expiryMinutes: expiryMinutes ?? null,
         });
         console.log(`Task created: id=${created.id} title="${created.title}"`);
         await loadTasks();
-        markDirty();
+        markDirty([created.id]);
         if (auth.load().mode === "account") {
           syncInBackground(
             created.id,
@@ -212,7 +234,7 @@ export function useTasks() {
   );
 
   const updateTask = useCallback(
-    async (id: string, title: string, priority?: string, tags?: string[], notes?: string, expiryHours?: number | null) => {
+    async (id: string, title: string, priority?: string, tags?: string[], notes?: string, expiryMinutes?: number | null) => {
       const prev = tasksRef.current.find((t) => t.id === id);
       if (!prev) return;
       try {
@@ -221,15 +243,15 @@ export function useTasks() {
           priority: priority ?? "medium",
           tags: tags ?? [],
           notes: notes ?? "",
-          expiryHours: expiryHours ?? null,
+          expiryMinutes: expiryMinutes ?? null,
         });
         await loadTasks();
-        markDirty(undefined, [id]);
+        markDirty([id]);
         if (auth.load().mode === "account") {
           syncInBackground(
             id,
-            () => sync.updateTask({ id, title, priority: priority ?? "medium", tags: tags ?? [], notes: notes ?? "" } as Task),
-            () => invoke("update_task", { id, title: prev.title, priority: prev.priority, tags: prev.tags, notes: prev.notes, expiryHours: null }).then(() => {}),
+            () => sync.updateTask({ ...prev, title, priority: priority ?? prev.priority, tags: tags ?? prev.tags, notes: notes ?? prev.notes } as Task),
+            () => invoke("update_task", { id, title: prev.title, priority: prev.priority, tags: prev.tags, notes: prev.notes, expiryMinutes: null }).then(() => {}),
           );
         }
       } catch (e: any) {
@@ -243,11 +265,12 @@ export function useTasks() {
   const toggleTask = useCallback(
     async (id: string) => {
       const prev = tasksRef.current.find((t) => t.id === id);
+      if (!prev) return;
       try {
         await invoke("toggle_task", { id });
         await loadTasks();
-        markDirty(undefined, [id]);
-        if (auth.load().mode === "account" && prev) {
+        markDirty([id]);
+        if (auth.load().mode === "account") {
           syncInBackground(
             id,
             async () => {
@@ -273,12 +296,12 @@ export function useTasks() {
       try {
         await invoke("delete_task", { id });
         await loadTasks();
-        markDirty([id]);
+        markDirty(undefined, [id]);
         if (auth.load().mode === "account") {
           syncInBackground(
             id,
             () => sync.deleteTask(id),
-            () => invoke("add_task", { id: prev.id, title: prev.title, description: prev.description, priority: prev.priority, tags: prev.tags, notes: prev.notes, expiryHours: null }).then(() => {}),
+            () => invoke("add_task", { id: prev.id, title: prev.title, description: prev.description, priority: prev.priority, tags: prev.tags, notes: prev.notes, expiryMinutes: null }).then(() => {}),
           );
         }
       } catch (e: any) {
@@ -289,8 +312,15 @@ export function useTasks() {
     [loadTasks, markDirty, syncInBackground, notify],
   );
 
-  const activeTasks = useMemo(() => sortByPriority(tasks.filter((t) => !t.completed)), [tasks]);
+  const expiredTasks = useMemo(
+    () => tasks.filter((t) => !t.completed && new Date(t.expires_at).getTime() <= now),
+    [tasks, now],
+  );
+  const activeTasks = useMemo(
+    () => sortByPriority(tasks.filter((t) => !t.completed && new Date(t.expires_at).getTime() > now)),
+    [tasks, now],
+  );
   const completedTasks = useMemo(() => tasks.filter((t) => t.completed), [tasks]);
 
-  return { tasks, activeTasks, completedTasks, loading, syncingIds, addTask, updateTask, toggleTask, deleteTask, triggerSync };
+  return { tasks, activeTasks, expiredTasks, completedTasks, loading, now, syncingIds, addTask, updateTask, toggleTask, deleteTask, triggerSync };
 }
