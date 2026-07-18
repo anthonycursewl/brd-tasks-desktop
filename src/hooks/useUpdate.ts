@@ -4,7 +4,6 @@ import { useNotify } from "../contexts/NotificationContext";
 
 export function useUpdate() {
   const [checking, setChecking] = useState(false);
-  const [updateInfo, setUpdateInfo] = useState<{ version: string; notes?: string } | null>(null);
   const { notify } = useNotify();
 
   const checkForUpdates = useCallback(async () => {
@@ -13,33 +12,23 @@ export function useUpdate() {
     try {
       const update = await check();
       if (update) {
-        setUpdateInfo({ version: update.version, notes: update.body });
-        notify(`Update ${update.version} available`, "success");
+        setChecking(true);
+        notify(`Downloading ${update.version}…`);
+        await update.downloadAndInstall();
+        notify("Update installed. Restarting…");
+        const { relaunch } = await import("@tauri-apps/plugin-process");
+        await relaunch();
       } else {
         notify("You're using the latest version", "success");
       }
     } catch (e: any) {
       const msg = typeof e === 'string' ? e : e?.message || e?.toString() || 'unknown error';
-      console.error("[Update check]", { message: msg, error: e });
+      console.error("[Update]", msg);
       notify(`Update error: ${msg}`);
     } finally {
       setChecking(false);
     }
   }, [checking, notify]);
 
-  const installUpdate = useCallback(async () => {
-    try {
-      const update = await check();
-      if (!update) return;
-      notify("Downloading update…");
-      await update.downloadAndInstall();
-      const { relaunch } = await import("@tauri-apps/plugin-process");
-      await relaunch();
-    } catch (e: any) {
-      console.error("[Install update]", e);
-      notify("Error occurred while installing the update");
-    }
-  }, [notify]);
-
-  return { checking, updateInfo, checkForUpdates, installUpdate, setUpdateInfo };
+  return { checking, checkForUpdates };
 }
