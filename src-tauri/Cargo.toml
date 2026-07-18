@@ -1,6 +1,6 @@
 [package]
 name = "brd-tasks-desktop"
-version = "0.1.0"
+version = "0.2.0"
 description = "Ephemeral task manager - tasks auto-delete after 24h"
 authors = ["breadriuss"]
 edition = "2021"
