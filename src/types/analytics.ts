@@ -41,6 +41,8 @@ export interface Summary {
 export interface Streaks {
   current: number;
   longest: number;
+  cold_days?: number;
+  status?: "active" | "cold" | "broken";
 }
 
 export interface DistributionItem {

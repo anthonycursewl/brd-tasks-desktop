@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { X, TrendingUp, Clock, Zap, Calendar } from "lucide-react";
+import { X, TrendingUp, Clock, Zap, Calendar, Flame } from "lucide-react";
 import { api, setTokens } from "../../services/api";
 import { auth } from "../../services/auth";
 import { AnalyticsResponse, DailyStat, WeeklyStat, MonthlyStat } from "../../types/analytics";
@@ -218,8 +218,24 @@ export function Analytics({ onClose }: AnalyticsProps) {
               )}
               {streaks && (
                 <div className="hero-streak">
-                  <Zap size={14} />
-                  <span><strong>{streaks.current}</strong> day streak</span>
+                  <div className="streak-block">
+                    <div className="streak-main">
+                      <Zap size={14} />
+                      <span><strong>{streaks.current}</strong> day streak</span>
+                    </div>
+                    <span className="streak-longest">Longest: {streaks.longest}</span>
+                  </div>
+                  {streaks.status === "cold" && (
+                    <div className="streak-banner cold">
+                      <Flame size={11} />
+                      Your {streaks.current}-day streak is cooling ({streaks.cold_days} day{streaks.cold_days !== 1 ? "s" : ""} without activity). Complete a task to reheat it!
+                    </div>
+                  )}
+                  {streaks.status === "broken" && (
+                    <div className="streak-banner broken">
+                      Streak lost. Start a new one!
+                    </div>
+                  )}
                 </div>
               )}
             </div>
