@@ -13,9 +13,9 @@ export function useUpdate() {
       const update = await check();
       if (update) {
         setChecking(true);
-        notify(`Downloading ${update.version}…`);
+        notify(`Downloading ${update.version}…`, "info");
         await update.downloadAndInstall();
-        notify("Update installed. Restarting…");
+        notify("Update installed. Restarting…", "info");
         const { relaunch } = await import("@tauri-apps/plugin-process");
         await relaunch();
       } else {

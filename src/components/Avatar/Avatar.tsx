@@ -4,20 +4,18 @@ import "./Avatar.css";
 interface AvatarProps {
   url?: string | null;
   name?: string;
+  onClick?: () => void;
 }
 
-export function Avatar({ url, name }: AvatarProps) {
-  if (url) {
-    return (
-      <div className="avatar">
-        <img src={url} alt={name || "Avatar"} className="avatar-img" />
-      </div>
-    );
-  }
-
+export function Avatar({ url, name, onClick }: AvatarProps) {
+  const Comp = onClick ? "button" : "div";
   return (
-    <div className="avatar">
-      <User size={16} />
-    </div>
+    <Comp className="avatar" onClick={onClick} type={onClick ? "button" : undefined}>
+      {url ? (
+        <img src={url} alt={name || "Avatar"} className="avatar-img" />
+      ) : (
+        <User size={16} />
+      )}
+    </Comp>
   );
 }

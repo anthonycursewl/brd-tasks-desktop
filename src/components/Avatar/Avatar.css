@@ -10,6 +10,16 @@
   flex-shrink: 0;
   color: var(--color-text-muted);
   background: var(--color-surface-2);
+  cursor: default;
+}
+
+button.avatar {
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+button.avatar:hover {
+  opacity: 0.8;
 }
 
 .avatar-img {

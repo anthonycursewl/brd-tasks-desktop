@@ -11,6 +11,7 @@ import CompactView from "./components/Compact/CompactView";
 import { LoginForm } from "./components/LoginForm/LoginForm";
 import { NotificationToast } from "./components/NotificationToast/NotificationToast";
 import { Analytics } from "./components/Analytics/Analytics";
+import { Settings } from "./components/Settings/Settings";
 import { TaskDetail } from "./components/TaskDetail/TaskDetail";
 import { Task } from "./types";
 import "./styles/global.css";
@@ -34,6 +35,7 @@ function App() {
   const [notes, setNotes] = useState("");
   const [showLogin, setShowLogin] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [detailTask, setDetailTask] = useState<Task | null>(null);
   const [isCompact, setIsCompact] = useState(false);
   const prevSizeRef = useRef<{ width: number; height: number; x: number; y: number } | null>(null);
@@ -143,7 +145,7 @@ function App() {
 
   return (
     <div className="popup">
-      <Header avatarUrl={user?.avatar_url} userName={user?.name} onReload={triggerSync} onAnalytics={() => setShowAnalytics(true)} onUpdate={checkForUpdates} updateChecking={updateChecking} isCompact={isCompact} onToggleCompact={toggleCompact} />
+      <Header avatarUrl={user?.avatar_url} userName={user?.name} onReload={triggerSync} onAnalytics={() => setShowAnalytics(true)} onSettings={() => setShowSettings(true)} onUpdate={checkForUpdates} updateChecking={updateChecking} isCompact={isCompact} onToggleCompact={toggleCompact} />
       
 
       {isCompact ? (
@@ -294,6 +296,8 @@ function App() {
       </div>
 
       {showAnalytics && <Analytics onClose={() => setShowAnalytics(false)} />}
+
+      {showSettings && <Settings userName={user?.name} avatarUrl={user?.avatar_url} onClose={() => setShowSettings(false)} />}
 
       {detailTask && (
         <TaskDetail

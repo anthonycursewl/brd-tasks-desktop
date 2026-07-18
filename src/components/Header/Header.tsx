@@ -9,6 +9,7 @@ interface HeaderProps {
   userName?: string;
   onReload?: () => void;
   onAnalytics?: () => void;
+  onSettings?: () => void;
   onUpdate?: () => void;
   updateChecking?: boolean;
   isCompact?: boolean;
@@ -17,7 +18,7 @@ interface HeaderProps {
 
 const COOLDOWN = 10000;
 
-export function Header({ avatarUrl, userName, onReload, onAnalytics, onUpdate, updateChecking, isCompact, onToggleCompact }: HeaderProps) {
+export function Header({ avatarUrl, userName, onReload, onAnalytics, onSettings, onUpdate, updateChecking, isCompact, onToggleCompact }: HeaderProps) {
   const [cooldown, setCooldown] = useState(0);
 
   const handleReload = useCallback(() => {
@@ -71,7 +72,9 @@ export function Header({ avatarUrl, userName, onReload, onAnalytics, onUpdate, u
             )}
           </button>
         </Tooltip>
-        <Avatar url={avatarUrl} name={userName} />
+        <Tooltip content="Settings" position="bottom">
+          <span><Avatar url={avatarUrl} name={userName} onClick={onSettings} /></span>
+        </Tooltip>
         <button className="btn-header" onClick={onToggleCompact} title={isCompact ? "Restore" : "Compact view"}>
           {isCompact ? <X size={14} strokeWidth={1.5} /> : <ChevronDown size={14} strokeWidth={2.5} />}
         </button>
